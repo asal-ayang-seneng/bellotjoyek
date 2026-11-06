@@ -795,12 +795,26 @@
                 .side-inner {
                     flex-direction: row;
                     align-items: center;
-                    padding: 8px 10px;
+                    padding: 6px 8px;
                     overflow-x: auto;
-                    gap: 2px;
+                    scroll-behavior: smooth;
+                    scrollbar-width: none;
+                    -webkit-overflow-scrolling: touch;
+                    gap: 3px;
+                }
+                .side-inner::-webkit-scrollbar {
+                    display: none;
                 }
                 .brand {
-                    padding: 0 4px;
+                    flex: none;
+                    padding: 0 10px 0 2px;
+                    margin-right: 2px;
+                    border-right: 1px solid var(--bd);
+                }
+                .brand .mark {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 8px;
                 }
                 .brand small,
                 .brand b,
@@ -812,16 +826,43 @@
                 }
                 aside .t,
                 .outb {
+                    flex: none;
                     flex-direction: column;
-                    min-width: 60px;
+                    min-width: 58px;
                     gap: 2px;
-                    padding: 6px 8px;
+                    padding: 6px 6px;
                     font-size: 10.5px;
                     text-align: center;
+                    white-space: nowrap;
+                    overflow: visible;
+                    line-height: 1.2;
+                }
+                aside .t svg {
+                    width: 21px;
+                    height: 21px;
+                }
+                .outb .ob-l {
+                    display: none;
+                }
+                .outb {
+                    color: var(--mut);
+                    border-left: 1px solid var(--bd);
+                    min-width: 46px;
+                    padding: 6px 10px;
                 }
                 #main {
                     padding: 14px;
                     padding-bottom: 60px;
+                    max-width: 100%;
+                }
+                .pagetitle .ic {
+                    display: none;
+                }
+                .kpi {
+                    grid-template-columns: repeat(2, 1fr) !important;
+                }
+                .kpi b {
+                    font-size: 17px;
                 }
             }
             /* --- elemen dasar lebih tenang --- */
@@ -977,6 +1018,59 @@
             }
             .empty .e {
                 color: var(--mut);
+            }
+
+            /* --- perapian halaman Riwayat di layar sempit --- */
+            .tw td small {
+                display: inline-block;
+                max-width: 220px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                vertical-align: bottom;
+            }
+            @media (max-width: 700px) {
+                /* tabel riwayat berubah jadi daftar kartu */
+                #logtw {
+                    border: none;
+                    background: transparent;
+                    box-shadow: none;
+                }
+                #logtw th {
+                    display: none;
+                }
+                #logtw tr {
+                    display: block;
+                    background: var(--card);
+                    border: 1px solid var(--bd);
+                    border-radius: 10px;
+                    box-shadow: var(--shadow);
+                    margin: 0 0 8px;
+                    padding: 4px 12px 8px;
+                }
+                #logtw td {
+                    display: block;
+                    white-space: normal;
+                    border-bottom: none;
+                    padding: 3px 0;
+                    font-size: 12.5px;
+                }
+                #logtw td:first-child {
+                    color: var(--mut);
+                    font-size: 11px;
+                }
+                #logtw td:nth-child(4) {
+                    color: var(--mut);
+                    font-size: 11px;
+                }
+                #logtw td small {
+                    display: block;
+                    max-width: 100%;
+                    font-size: 11.5px;
+                }
+                .tw pre {
+                    font-size: 11px;
+                    padding: 10px !important;
+                }
             }
         </style>
     </head>
@@ -1252,16 +1346,16 @@ end $$;</pre></div>
                 ${[
                     ['kasir', 'Kasir'],
                     ['menu', 'Menu'],
-                    ['bahan', 'Bahan Baku'],
-                    ['biaya', 'Biaya & Pemasukan'],
+                    ['bahan', 'Bahan'],
+                    ['biaya', 'Biaya'],
                     ['laporan', 'Laporan'],
                     ['riwayat', 'Riwayat'],
-                    ['riset', 'Riset & Arsip'],
+                    ['riset', 'Riset'],
                 ]
                     .map((x) => `<button class="t" data-t="${x[0]}" onclick="show('${x[0]}')">${PI[x[0]]}${x[1]}</button>`)
                     .join(
                         ''
-                    )}<span class="grow"></span><div class="who">${esc(user)}</div><button class="outb" onclick="outAsk()">${lic('keluar')}Keluar</button></div></aside><div id="main"></div></div>`);
+                    )}<span class="grow"></span><div class="who">${esc(user)}</div><button class="outb" onclick="outAsk()">${lic('keluar')}<span class="ob-l">Keluar</span></button></div></aside><div id="main"></div></div>`);
                 load();
             }
             function outAsk() {
@@ -1492,7 +1586,7 @@ end $$;</pre></div>
                 }
                 ${
                     D.log.length
-                        ? `<div class="tw"><table><tr><th>Waktu</th><th>Oleh</th><th>Kegiatan</th><th>Berupa</th><th>Data</th></tr>${D.log.map((l) => {
+                        ? `<div class="tw" id="logtw"><table><tr><th>Waktu</th><th>Oleh</th><th>Kegiatan</th><th>Berupa</th><th>Data</th></tr>${D.log.map((l) => {
                               const a = ACT[l.action] || [l.action, l.action];
                               return `<tr><td>${dt(l.created_at)}</td><td>${esc(l.user_email || '')}</td><td><b>${a[0]} ${a[1]}</b></td><td>${esc(TBL[l.tbl] || l.tbl)}</td><td><small>${esc(JSON.stringify(l.detail)).slice(0, 110)}</small></td></tr>`;
                           }).join('')}</table></div>`
