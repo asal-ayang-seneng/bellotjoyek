@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Kasir Resto</title>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        <style>
+            :root {
+                --bg: #f6f5f2;
+                --fg: #1d1d1b;
+                --card: #fff;
+                --ac: #c2410c;
+                --bd: #ddd9d0;
+                --mut: #6b6860;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #161512;
+                    --fg: #eee;
+                    --card: #22211d;
+                    --ac: #fb923c;
+                    --bd: #38362f;
+                    --mut: #a29f95;
+                }
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                font:
+                    14px system-ui,
+                    sans-serif;
+                background: var(--bg);
+                color: var(--fg);
+            }
+            nav {
+                display: flex;
+                gap: 4px;
+                padding: 8px;
+                background: var(--card);
+                border-bottom: 1px solid var(--bd);
+                overflow-x: auto;
+                position: sticky;
+                top: 0;
+            }
+            button,
+            input,
+            select {
+                font: inherit;
+                padding: 7px 10px;
+                border: 1px solid var(--bd);
+                border-radius: 6px;
+                background: var(--card);
+                color: var(--fg);
+            }
+            button {
+                cursor: pointer;
+            }
+            nav button.on,
+            .pri {
+                background: var(--ac);
+                color: #fff;
+                border-color: var(--ac);
+            }
+            #main {
+                padding: 12px;
+                max-width: 1200px;
+                margin: auto;
+            }
+            .g2 {
+                display: grid;
+                grid-template-columns: 1fr 320px;
+                gap: 12px;
+            }
+            @media (max-width: 800px) {
+                .g2 {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                gap: 8px;
+                align-content: start;
+            }
+            .card {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                text-align: left;
+            }
+            .card small {
+                color: var(--mut);
+            }
+            .card span {
+                color: var(--ac);
+                font-weight: 600;
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--bd);
+                border-radius: 8px;
+                padding: 12px;
+            }
+            .row {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            .tw {
+                overflow-x: auto;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: var(--card);
+            }
+            th,
+            td {
+                padding: 6px 8px;
+                border-bottom: 1px solid var(--bd);
+                text-align: left;
+                white-space: nowrap;
+            }
+            .low {
+                color: #dc2626;
+                font-weight: 600;
+            }
+            .kpi {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 8px;
+                margin: 10px 0;
+            }
+            .kpi div {
+                background: var(--card);
+                border: 1px solid var(--bd);
+                border-radius: 8px;
+                padding: 10px;
+            }
+            .kpi b {
+                display: block;
+                font-size: 18px;
+            }
+            #login {
+                max-width: 320px;
+                margin: 15vh auto;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <script>
+            /* ===== CONFIG ===== */
+            const URL_ = 'https://qubdklzkqlxcjusmwvhc.supabase.co',
+                KEY = 'sb_publishable_R3P9Rz2dfMHpXJap6zM-XA_cezDeUAJ';
+            /* ================== */
+            const sb = supabase.createClient(URL_, KEY),
+                $ = (s) => document.querySelector(s),
+                rp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+            const dt = (s) => new Date(s).toLocaleString('id-ID'),
+                today = () => new Date().toISOString().slice(0, 10);
+            let D = {},
+                cart = [],
+                tab = 'kasir',
+                user = null,
+                from = today(),
+                to = today();
+            const T = ['menu_items', 'ingredients', 'recipes', 'orders', 'stock_moves', 'expenses'];
+            async function load() {
+                for (const t of T) {
+                    const { data, error } = await sb.from(t).select('*').order('id', { ascending: false }).limit(5000);
+                    if (error) return alert(error.message);
+                    D[t] = data;
+                }
+                const { data } = await sb.from('activity_log').select('*').order('id', { ascending: false }).limit(300);
+                D.log = data || [];
+                show(tab);
+            }
+            async function run(p) {
+                const { error } = await p;
+                if (error) alert(error.message);
+                else await load();
+            }
+            function loginUI() {
+                document.body.innerHTML = `<div id=login><h2>Kasir Resto</h2><input id=e placeholder=Email><input id=p type=password placeholder=Password><button class=pri onclick=doLogin()>Masuk</button></div>`;
+            }
+            async function doLogin() {
+                const { error } = await sb.auth.signInWithPassword({ email: $('#e').value, password: $('#p').value });
+                error ? alert(error.message) : start();
+            }
+            async function start() {
+                const { data } = await sb.auth.getSession();
+                if (!data.session) return loginUI();
+                user = data.session.user.email;
+                document.body.innerHTML = `<nav>${[
+                    ['kasir', 'Kasir'],
+                    ['menu', 'Menu'],
+                    ['bahan', 'Bahan Baku'],
+                    ['biaya', 'Biaya'],
+                    ['laporan', 'Laporan'],
+                    ['riwayat', 'Riwayat'],
+                ]
+                    .map((x) => `<button data-t=${x[0]} onclick="show('${x[0]}')">${x[1]}</button>`)
+                    .join(
+                        ''
+                    )}<span style=flex:1></span><button onclick="sb.auth.signOut().then(loginUI)">Keluar (${user})</button></nav><div id=main></div>`;
+                load();
+            }
+            function show(t) {
+                tab = t;
+                document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.t == t));
+                V[t]();
+            }
+            const inRange = (r) => {
+                const d = r.created_at.slice(0, 10);
+                return d >= from && d <= to;
+            };
+            const V = {
+                kasir() {
+                    $('#main').innerHTML = `<div class=g2><div class=grid>${
+                        D.menu_items
+                            .filter((m) => m.active)
+                            .map(
+                                (m) =>
+                                    `<button class=card onclick=add(${m.id})><b>${m.name}</b><small>${m.category || ''}</small><span>${rp(m.price)}</span></button>`
+                            )
+                            .join('') || 'Belum ada menu'
+                    }</div><div class=panel><h3>Pesanan</h3><div id=cart></div></div></div>`;
+                    drawCart();
+                },
+                menu() {
+                    const rc = (id) =>
+                        D.recipes
+                            .filter((r) => r.menu_id == id)
+                            .map((r) => (D.ingredients.find((i) => i.id == r.ingredient_id) || {}).name + '=' + r.qty)
+                            .join(', ');
+                    $('#main').innerHTML =
+                        `<div class=row><input id=n placeholder=Nama><input id=c placeholder=Kategori><input id=pr type=number placeholder=Harga><button class=pri onclick="run(sb.from('menu_items').insert({name:n.value,category:c.value,price:+pr.value}))">Tambah Menu</button></div><div class=tw><table><tr><th>Menu<th>Kategori<th>Harga<th>Resep (bahan=jumlah)<th>Status<th></tr>${D.menu_items.map((m) => `<tr><td>${m.name}<td>${m.category || ''}<td>${rp(m.price)}<td>${rc(m.id) || '-'}<td>${m.active ? 'Aktif' : 'Nonaktif'}<td><button onclick=editPrice(${m.id})>Harga</button> <button onclick=editRecipe(${m.id})>Resep</button> <button onclick="run(sb.from('menu_items').update({active:${!m.active}}).eq('id',${m.id}))">${m.active ? 'Nonaktifkan' : 'Aktifkan'}</button></tr>`).join('')}</table></div>`;
+                },
+                bahan() {
+                    $('#main').innerHTML =
+                        `<div class=row><input id=n placeholder="Nama bahan"><input id=u placeholder="Satuan (gr/ml/pcs)" size=8><input id=s type=number placeholder="Stok awal"><input id=mn type=number placeholder="Stok minimum"><input id=co type=number placeholder="Harga/satuan"><button class=pri onclick="addIng()">Tambah Bahan</button></div><div class=tw><table><tr><th>Bahan<th>Stok<th>Min<th>Harga/sat<th></tr>${D.ingredients.map((i) => `<tr><td>${i.name}<td class="${i.stock <= i.min_stock ? 'low' : ''}">${i.stock} ${i.unit}<td>${i.min_stock}<td>${rp(i.cost)}<td><button onclick="move(${i.id},1)">+ Beli</button> <button onclick="move(${i.id},-1)">- Buang/Koreksi</button></tr>`).join('')}</table></div>`;
+                },
+                biaya() {
+                    $('#main').innerHTML =
+                        `<div class=row><select id=c><option>Biaya Lapangan<option>Transport<option>Listrik/Gas<option>Gaji<option>Lainnya</select><input id=a type=number placeholder=Jumlah><input id=n placeholder=Catatan><button class=pri onclick="run(sb.from('expenses').insert({category:c.value,amount:+a.value,note:n.value}))">Catat Biaya</button></div><div class=tw><table><tr><th>Waktu<th>Kategori<th>Jumlah<th>Catatan<th>Oleh</tr>${D.expenses.map((e) => `<tr><td>${dt(e.created_at)}<td>${e.category}<td>${rp(e.amount)}<td>${e.note || ''}<td>${e.user_email}</tr>`).join('')}</table></div>`;
+                },
+                laporan() {
+                    const o = D.orders.filter(inRange),
+                        e = D.expenses.filter(inRange),
+                        inc = o.reduce((a, x) => a + x.total, 0),
+                        out = e.reduce((a, x) => a + x.amount, 0);
+                    const bm = {};
+                    D.stock_moves.filter((m) => inRange(m) && m.type == 'purchase').forEach((m) => 0);
+                    const pm = {};
+                    o.forEach((x) => (pm[x.payment_method] = (pm[x.payment_method] || 0) + x.total));
+                    $('#main').innerHTML =
+                        `<div class=row>Dari <input type=date id=f value=${from}> s/d <input type=date id=t value=${to}><button onclick="from=f.value;to=t.value;V.laporan()">Terapkan</button><button class=pri onclick=exportXls()>Export Excel (Audit)</button></div><div class=kpi><div>Pemasukan<b>${rp(inc)}</b></div><div>Pengeluaran<b>${rp(out)}</b></div><div>Laba Bersih<b>${rp(inc - out)}</b></div><div>Transaksi<b>${o.length}</b></div></div><p>Per metode: ${
+                            Object.entries(pm)
+                                .map(([k, v]) => k + ' ' + rp(v))
+                                .join(' | ') || '-'
+                        }</p><div class=tw><table><tr><th>No<th>Waktu<th>Meja<th>Metode<th>Total<th>Kasir</tr>${o.map((x) => `<tr><td>#${x.id}<td>${dt(x.created_at)}<td>${x.table_no || ''}<td>${x.payment_method}<td>${rp(x.total)}<td>${x.cashier}</tr>`).join('')}</table></div>`;
+                },
+                riwayat() {
+                    $('#main').innerHTML =
+                        `<div class=tw><table><tr><th>Waktu<th>User<th>Aksi<th>Tabel<th>Detail</tr>${D.log.map((l) => `<tr><td>${dt(l.created_at)}<td>${l.user_email || ''}<td>${l.action}<td>${l.tbl}<td>${JSON.stringify(l.detail).slice(0, 90)}</tr>`).join('')}</table></div>`;
+                },
+            };
+            function add(id) {
+                const c = cart.find((x) => x.id == id);
+                c ? c.qty++ : cart.push({ id, qty: 1 });
+                drawCart();
+            }
+            function drawCart() {
+                const el = $('#cart');
+                if (!el) return;
+                let tot = 0;
+                const rows = cart
+                    .map((c) => {
+                        const m = D.menu_items.find((x) => x.id == c.id);
+                        tot += m.price * c.qty;
+                        return `<div class=row style="justify-content:space-between"><span>${m.name} x${c.qty}</span><span>${rp(m.price * c.qty)} <button onclick="dec(${c.id})">-</button></span></div>`;
+                    })
+                    .join('');
+                el.innerHTML =
+                    rows +
+                    `<hr><h3>Total ${rp(tot)}</h3><div class=row><input id=tb placeholder=Meja size=6><select id=pm><option>Tunai<option>QRIS<option>Kartu</select></div><button class=pri style=width:100% onclick=pay()>Bayar</button>`;
+            }
+            function dec(id) {
+                const c = cart.find((x) => x.id == id);
+                if (--c.qty <= 0) cart = cart.filter((x) => x !== c);
+                drawCart();
+            }
+            async function pay() {
+                if (!cart.length) return;
+                const { data, error } = await sb.rpc('checkout', {
+                    p_table: $('#tb').value,
+                    p_method: $('#pm').value,
+                    p_items: cart,
+                });
+                if (error) return alert(error.message);
+                cart = [];
+                alert('Order #' + data + ' berhasil');
+                load();
+            }
+            function editPrice(id) {
+                const v = prompt('Harga baru:');
+                if (v) run(sb.from('menu_items').update({ price: +v }).eq('id', id));
+            }
+            async function editRecipe(id) {
+                const cur = D.recipes
+                    .filter((r) => r.menu_id == id)
+                    .map((r) => D.ingredients.find((i) => i.id == r.ingredient_id).name + '=' + r.qty)
+                    .join(', ');
+                const v = prompt('Resep per porsi, format: Beras=150, Ayam=100', cur);
+                if (v === null) return;
+                const rows = [];
+                for (const p of v.split(',').filter((x) => x.trim())) {
+                    const [n, q] = p.split('=');
+                    const i = D.ingredients.find((x) => x.name.toLowerCase() == n.trim().toLowerCase());
+                    if (!i) return alert('Bahan tidak ditemukan: ' + n);
+                    rows.push({ menu_id: id, ingredient_id: i.id, qty: +q });
+                }
+                await sb.from('recipes').delete().eq('menu_id', id);
+                if (rows.length) await run(sb.from('recipes').insert(rows));
+                else load();
+            }
+            async function addIng() {
+                const { data, error } = await sb
+                    .from('ingredients')
+                    .insert({ name: n.value, unit: u.value || 'gr', min_stock: +mn.value || 0, cost: +co.value || 0 })
+                    .select()
+                    .single();
+                if (error) return alert(error.message);
+                if (+s.value)
+                    await sb
+                        .from('stock_moves')
+                        .insert({ ingredient_id: data.id, qty: +s.value, type: 'initial', note: 'Stok awal' });
+                load();
+            }
+            async function move(id, sign) {
+                const i = D.ingredients.find((x) => x.id == id),
+                    v = +prompt(sign > 0 ? `Jumlah beli (${i.unit}):` : `Jumlah dibuang/koreksi (${i.unit}):`);
+                if (!v) return;
+                const note = prompt('Catatan:') || '';
+                await sb
+                    .from('stock_moves')
+                    .insert({ ingredient_id: id, qty: sign * v, type: sign > 0 ? 'purchase' : 'waste', note });
+                if (sign > 0 && i.cost)
+                    await sb
+                        .from('expenses')
+                        .insert({ category: 'Bahan Baku', amount: v * i.cost, note: `Beli ${i.name} ${v}${i.unit}` });
+                load();
+            }
+            async function exportXls() {
+                const { data: oi } = await sb.from('order_items').select('*').order('id');
+                const wb = XLSX.utils.book_new(),
+                    A = (n, r) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(r), n);
+                A('Penjualan', D.orders.filter(inRange));
+                A('Detail Item', oi || []);
+                A('Pengeluaran', D.expenses.filter(inRange));
+                A('Stok Bahan', D.ingredients);
+                A('Mutasi Stok', D.stock_moves.filter(inRange));
+                A('Menu', D.menu_items);
+                const { data: lg } = await sb
+                    .from('activity_log')
+                    .select('*')
+                    .gte('created_at', from)
+                    .lte('created_at', to + 'T23:59:59')
+                    .order('id');
+                A(
+                    'Riwayat Aktivitas',
+                    (lg || []).map((l) => ({ ...l, detail: JSON.stringify(l.detail) }))
+                );
+                XLSX.writeFile(wb, `audit-kasir-${from}_${to}.xlsx`);
+            }
+            start();
+        </script>
+    </body>
+</html>
